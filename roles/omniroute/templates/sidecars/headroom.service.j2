@@ -1,0 +1,24 @@
+[Unit]
+Description=Headroom Token Compression Proxy Sidecar for OmniRoute
+After=network.target local-fs.target
+
+[Service]
+Type=simple
+User={{ omniroute_user }}
+Group={{ omniroute_group }}
+WorkingDirectory={{ omniroute_home }}
+ExecStart={{ omniroute_bin_dir }}/headroom --bind {{ omniroute_headroom_bind }}:{{ omniroute_headroom_port }}
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniroute-headroom
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,34 @@
+---
+- name: Install SQLite online backup script
+  ansible.builtin.template:
+    src: omniroute-backup.sh.j2
+    dest: "{{ omniroute_backup_script_path }}"
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "0750"
+
+- name: Install omniroute-backup.service unit
+  ansible.builtin.template:
+    src: omniroute-backup.service.j2
+    dest: /etc/systemd/system/omniroute-backup.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload systemd
+
+- name: Install omniroute-backup.timer unit
+  ansible.builtin.template:
+    src: omniroute-backup.timer.j2
+    dest: /etc/systemd/system/omniroute-backup.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart omniroute-backup-timer
+
+- name: Ensure omniroute-backup timer is enabled and active
+  ansible.builtin.systemd:
+    name: omniroute-backup.timer
+    state: started
+    enabled: true

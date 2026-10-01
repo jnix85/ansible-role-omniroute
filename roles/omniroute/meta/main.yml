@@ -1,0 +1,29 @@
+---
+galaxy_info:
+  author: Jason Parks
+  description: Comprehensive, production-ready Ansible role for OmniRoute AI Gateway
+  company: clawduino
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - trixie
+        - all
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+        - all
+  galaxy_tags:
+    - ai
+    - gateway
+    - llm
+    - proxy
+    - openai
+    - claude
+    - omniroute
+    - systemd
+
+dependencies: []

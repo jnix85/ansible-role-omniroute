@@ -1,0 +1,43 @@
+---
+- name: Ensure OmniRoute system group exists
+  ansible.builtin.group:
+    name: "{{ omniroute_group }}"
+    gid: "{{ omniroute_group_gid | default(omit, true) }}"
+    state: present
+    system: true
+  when: omniroute_create_user | bool
+
+- name: Ensure OmniRoute system user exists
+  ansible.builtin.user:
+    name: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    uid: "{{ omniroute_user_uid | default(omit, true) }}"
+    home: "{{ omniroute_home }}"
+    shell: "{{ omniroute_shell }}"
+    system: true
+    create_home: true
+    state: present
+  when: omniroute_create_user | bool
+
+- name: Create OmniRoute directory hierarchy
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "{{ item.mode | default('0750') }}"
+  loop:
+    - path: "{{ omniroute_home }}"
+    - path: "{{ omniroute_app_dir }}"
+    - path: "{{ omniroute_data_dir }}"
+      mode: "0700"
+    - path: "{{ omniroute_config_dir }}"
+      mode: "0700"
+    - path: "{{ omniroute_bin_dir }}"
+      mode: "0755"
+    - path: "{{ omniroute_backup_dir }}"
+      mode: "0700"
+    - path: "{{ omniroute_cache_dir }}"
+      mode: "0750"
+    - path: "{{ omniroute_log_dir }}"
+      mode: "0755"

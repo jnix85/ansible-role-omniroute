@@ -1,0 +1,12 @@
+# Logrotate configuration for OmniRoute — Managed by Ansible
+{{ omniroute_log_dir }}/*.log {
+    daily
+    rotate {{ omniroute_logrotate_retention_days }}
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+    su {{ omniroute_user }} {{ omniroute_group }}
+    create 0640 {{ omniroute_user }} {{ omniroute_group }}
+}

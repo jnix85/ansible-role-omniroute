@@ -1,0 +1,29 @@
+---
+- name: Install OmniRoute systemd service unit
+  ansible.builtin.template:
+    src: omniroute.service.j2
+    dest: /etc/systemd/system/{{ omniroute_service_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - reload systemd
+    - restart omniroute
+
+- name: Configure logrotate for OmniRoute file logs
+  ansible.builtin.template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/omniroute
+    owner: root
+    group: root
+    mode: "0644"
+  when: omniroute_manage_logrotate | bool
+
+- name: Flush handlers before service management
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure OmniRoute systemd service is configured and managed
+  ansible.builtin.systemd:
+    name: "{{ omniroute_service_name }}"
+    state: "{{ omniroute_service_state }}"
+    enabled: "{{ omniroute_service_enabled }}"

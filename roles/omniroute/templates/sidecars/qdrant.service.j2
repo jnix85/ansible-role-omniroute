@@ -1,0 +1,25 @@
+[Unit]
+Description=Qdrant Vector Database Sidecar for OmniRoute
+Documentation=https://qdrant.tech/documentation/
+After=network.target local-fs.target
+
+[Service]
+Type=simple
+User={{ omniroute_user }}
+Group={{ omniroute_group }}
+WorkingDirectory={{ omniroute_qdrant_data_dir }}
+ExecStart={{ omniroute_bin_dir }}/qdrant --uri http://{{ omniroute_qdrant_bind }}:{{ omniroute_qdrant_port }}
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniroute-qdrant
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

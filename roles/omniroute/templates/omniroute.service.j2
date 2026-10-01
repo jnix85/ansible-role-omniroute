@@ -1,0 +1,70 @@
+[Unit]
+Description=OmniRoute AI Gateway Service
+Documentation=https://github.com/diegosouzapw/OmniRoute
+After=network.target local-fs.target
+{% if omniroute_redis_enabled and omniroute_redis_mode == 'local' %}
+After=redis.service
+Wants=redis.service
+{% endif %}
+{% if omniroute_qdrant_enabled %}
+After=omniroute-qdrant.service
+Wants=omniroute-qdrant.service
+{% endif %}
+{% if omniroute_bifrost_enabled %}
+After=omniroute-bifrost.service
+Wants=omniroute-bifrost.service
+{% endif %}
+
+[Service]
+Type=simple
+User={{ omniroute_user }}
+Group={{ omniroute_group }}
+WorkingDirectory={{ omniroute_app_dir }}
+
+# Environment Sourcing
+EnvironmentFile=-{{ omniroute_config_dir }}/.env
+EnvironmentFile=-{{ omniroute_config_dir }}/.secrets.env
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS={{ omniroute_node_options }}
+Environment=DATA_DIR={{ omniroute_data_dir }}
+Environment=PATH=/usr/local/bin:/usr/bin:/bin:{{ omniroute_bin_dir }}
+{% if omniroute_enable_playwright %}
+Environment=PLAYWRIGHT_BROWSERS_PATH={{ omniroute_playwright_browsers_path }}
+{% endif %}
+
+# Execution Command
+ExecStart=/usr/bin/pnpm run serve
+
+# Lifecycle & Restart Policy
+Restart=always
+RestartSec=5s
+TimeoutStopSec=40s
+KillMode=control-group
+
+# Standard Output / Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniroute
+
+# Systemd Hardening & Sandboxing
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+RestrictSUIDSGID=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ReadWritePaths={{ omniroute_home }} {{ omniroute_data_dir }} {{ omniroute_log_dir }}
+
+# Cgroup Resource Boundaries & Accounting
+MemoryAccounting=true
+CPUAccounting=true
+{% if omniroute_systemd_memory_high %}
+MemoryHigh={{ omniroute_systemd_memory_high }}
+{% endif %}
+{% if omniroute_systemd_memory_max %}
+MemoryMax={{ omniroute_systemd_memory_max }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

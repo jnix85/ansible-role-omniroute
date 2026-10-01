@@ -1,0 +1,51 @@
+---
+- name: Reload systemd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  listen: reload systemd
+
+- name: Restart omniroute
+  ansible.builtin.systemd:
+    name: "{{ omniroute_service_name }}"
+    state: restarted
+  when:
+    - omniroute_service_state == "started"
+    - omniroute_service_restart_on_change | bool
+  listen: restart omniroute
+
+- name: Restart omniroute-backup-timer
+  ansible.builtin.systemd:
+    name: omniroute-backup.timer
+    state: restarted
+  when: omniroute_backup_enabled | bool
+  listen: restart omniroute-backup-timer
+
+- name: Restart redis
+  ansible.builtin.systemd:
+    name: redis-server
+    state: restarted
+  when:
+    - omniroute_redis_enabled | bool
+    - omniroute_redis_mode == "local"
+  listen: restart redis
+
+- name: Restart qdrant
+  ansible.builtin.systemd:
+    name: omniroute-qdrant
+    state: restarted
+  when: omniroute_qdrant_enabled | bool
+  listen: restart qdrant
+
+- name: Restart bifrost
+  ansible.builtin.systemd:
+    name: omniroute-bifrost
+    state: restarted
+  when: omniroute_bifrost_enabled | bool
+  listen: restart bifrost
+
+- name: Restart headroom
+  ansible.builtin.systemd:
+    name: omniroute-headroom
+    state: restarted
+  when: omniroute_headroom_enabled | bool
+  listen: restart headroom

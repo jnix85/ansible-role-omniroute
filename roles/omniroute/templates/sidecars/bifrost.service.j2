@@ -1,0 +1,24 @@
+[Unit]
+Description=Bifrost Go Tier-1 Router Sidecar for OmniRoute
+After=network.target local-fs.target
+
+[Service]
+Type=simple
+User={{ omniroute_user }}
+Group={{ omniroute_group }}
+WorkingDirectory={{ omniroute_home }}
+ExecStart={{ omniroute_bin_dir }}/bifrost --bind {{ omniroute_bifrost_bind }}:{{ omniroute_bifrost_port }}
+Restart=always
+RestartSec=5s
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniroute-bifrost
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=OmniRoute SQLite Database Online Backup Service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+User={{ omniroute_user }}
+Group={{ omniroute_group }}
+ExecStart={{ omniroute_backup_script_path }}
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=omniroute-backup

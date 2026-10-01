@@ -1,0 +1,25 @@
+---
+# OS-agnostic vars for omniroute role
+omniroute_required_packages:
+  - git
+  - curl
+  - ca-certificates
+  - gnupg
+  - build-essential
+  - python3
+  - sqlite3
+  - openssl
+  - tar
+  - gzip
+
+omniroute_playwright_packages:
+  - libnss3
+  - libatk1.0-0
+  - libcups2
+  - libdrm2
+  - libxcomposite1
+  - libxdamage1
+  - libxrandr2
+  - libgbm1
+  - libpango-1.0-0
+  - libasound2

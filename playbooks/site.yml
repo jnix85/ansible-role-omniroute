@@ -1,0 +1,6 @@
+---
+- name: Deploy OmniRoute AI Gateway
+  hosts: omniroute
+  become: true
+  roles:
+    - role: omniroute

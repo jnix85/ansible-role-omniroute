@@ -1,0 +1,10 @@
+[Unit]
+Description=OmniRoute SQLite Database Online Backup Timer
+After=local-fs.target
+
+[Timer]
+OnCalendar={{ omniroute_backup_schedule }}
+Persistent=true
+
+[Install]
+WantedBy=timers.target

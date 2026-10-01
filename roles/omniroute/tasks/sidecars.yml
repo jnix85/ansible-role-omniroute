@@ -1,0 +1,160 @@
+---
+# ── Redis Sidecar ────────────────────────────────────────────────────────────
+- name: Manage local Redis server
+  when:
+    - omniroute_redis_enabled | bool
+    - omniroute_redis_mode == 'local'
+  block:
+    - name: Install redis-server package
+      ansible.builtin.apt:
+        name: redis-server
+        state: present
+
+    - name: Configure Redis bind host and requirepass
+      ansible.builtin.lineinfile:
+        path: /etc/redis/redis.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        state: present
+      loop:
+        - regexp: '^#?\s*bind\s+'
+          line: "bind {{ omniroute_redis_bind_host }}"
+        - regexp: '^#?\s*port\s+'
+          line: "port {{ omniroute_redis_port }}"
+        - regexp: '^#?\s*requirepass\s+'
+          line: "requirepass {{ omniroute_effective_redis_password }}"
+      notify: restart redis
+
+    - name: Ensure redis-server is enabled and running
+      ansible.builtin.systemd:
+        name: redis-server
+        state: started
+        enabled: true
+
+# ── Qdrant Vector Sidecar ───────────────────────────────────────────────────
+- name: Manage Qdrant vector memory sidecar
+  when: omniroute_qdrant_enabled | bool
+  block:
+    - name: Ensure Qdrant data directory exists
+      ansible.builtin.file:
+        path: "{{ omniroute_qdrant_data_dir }}"
+        state: directory
+        owner: "{{ omniroute_user }}"
+        group: "{{ omniroute_group }}"
+        mode: "0750"
+
+    - name: Download Qdrant release binary
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/qdrant/qdrant/releases/download/{{ omniroute_qdrant_version
+          }}/qdrant-{{ 'x86_64' if ansible_architecture == 'x86_64' else 'aarch64' }}-unknown-linux-gnu.tar.gz
+        dest: "/tmp/qdrant.tar.gz"
+        mode: "0644"
+      register: omniroute_qdrant_tar
+
+    - name: Extract Qdrant binary to bin directory
+      ansible.builtin.unarchive:
+        src: "/tmp/qdrant.tar.gz"
+        dest: "{{ omniroute_bin_dir }}"
+        remote_src: true
+        owner: "{{ omniroute_user }}"
+        group: "{{ omniroute_group }}"
+        mode: "0755"
+      when: omniroute_qdrant_tar.changed
+
+    - name: Install omniroute-qdrant.service unit
+      ansible.builtin.template:
+        src: sidecars/qdrant.service.j2
+        dest: /etc/systemd/system/omniroute-qdrant.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - reload systemd
+        - restart qdrant
+
+    - name: Enable and start omniroute-qdrant service
+      ansible.builtin.systemd:
+        name: omniroute-qdrant
+        state: started
+        enabled: true
+
+# ── Bifrost Router Sidecar ──────────────────────────────────────────────────
+- name: Manage Bifrost Go router sidecar
+  when: omniroute_bifrost_enabled | bool
+  block:
+    - name: Download Bifrost release binary
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/diegosouzapw/bifrost/releases/download/{{ omniroute_bifrost_version
+          }}/bifrost_linux_{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz
+        dest: "/tmp/bifrost.tar.gz"
+        mode: "0644"
+      register: omniroute_bifrost_tar
+
+    - name: Extract Bifrost binary to bin directory
+      ansible.builtin.unarchive:
+        src: "/tmp/bifrost.tar.gz"
+        dest: "{{ omniroute_bin_dir }}"
+        remote_src: true
+        owner: "{{ omniroute_user }}"
+        group: "{{ omniroute_group }}"
+        mode: "0755"
+      when: omniroute_bifrost_tar.changed
+
+    - name: Install omniroute-bifrost.service unit
+      ansible.builtin.template:
+        src: sidecars/bifrost.service.j2
+        dest: /etc/systemd/system/omniroute-bifrost.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - reload systemd
+        - restart bifrost
+
+    - name: Enable and start omniroute-bifrost service
+      ansible.builtin.systemd:
+        name: omniroute-bifrost
+        state: started
+        enabled: true
+
+# ── Headroom Token Compressor Sidecar ───────────────────────────────────────
+- name: Manage Headroom token compressor sidecar
+  when: omniroute_headroom_enabled | bool
+  block:
+    - name: Download Headroom release binary
+      ansible.builtin.get_url:
+        url: >-
+          https://github.com/diegosouzapw/headroom/releases/download/{{ omniroute_headroom_version
+          }}/headroom_linux_{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' }}.tar.gz
+        dest: "/tmp/headroom.tar.gz"
+        mode: "0644"
+      register: omniroute_headroom_tar
+
+    - name: Extract Headroom binary to bin directory
+      ansible.builtin.unarchive:
+        src: "/tmp/headroom.tar.gz"
+        dest: "{{ omniroute_bin_dir }}"
+        remote_src: true
+        owner: "{{ omniroute_user }}"
+        group: "{{ omniroute_group }}"
+        mode: "0755"
+      when: omniroute_headroom_tar.changed
+
+    - name: Install omniroute-headroom.service unit
+      ansible.builtin.template:
+        src: sidecars/headroom.service.j2
+        dest: /etc/systemd/system/omniroute-headroom.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify:
+        - reload systemd
+        - restart headroom
+
+    - name: Enable and start omniroute-headroom service
+      ansible.builtin.systemd:
+        name: omniroute-headroom
+        state: started
+        enabled: true

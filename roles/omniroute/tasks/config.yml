@@ -1,0 +1,28 @@
+---
+- name: Render OmniRoute environment configuration
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ omniroute_config_dir }}/.env"
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "0640"
+  notify: restart omniroute
+
+- name: Symlink .env to application directory
+  ansible.builtin.file:
+    src: "{{ omniroute_config_dir }}/.env"
+    dest: "{{ omniroute_app_dir }}/.env"
+    state: link
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    force: true
+
+- name: Render payloadRules.json configuration
+  ansible.builtin.template:
+    src: payloadRules.json.j2
+    dest: "{{ omniroute_payload_rules_path }}"
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "0640"
+  when: omniroute_payload_rules is defined
+  notify: restart omniroute

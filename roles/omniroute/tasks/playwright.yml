@@ -1,0 +1,23 @@
+---
+- name: Install Playwright system dependencies
+  ansible.builtin.apt:
+    name: "{{ omniroute_playwright_packages }}"
+    state: present
+
+- name: Ensure Playwright browser cache directory exists
+  ansible.builtin.file:
+    path: "{{ omniroute_playwright_browsers_path }}"
+    state: directory
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "0750"
+
+- name: Install Playwright Chromium browser binaries
+  ansible.builtin.command:
+    cmd: pnpm exec playwright install chromium
+    chdir: "{{ omniroute_app_dir }}"
+  become: true
+  become_user: "{{ omniroute_user }}"
+  environment:
+    PLAYWRIGHT_BROWSERS_PATH: "{{ omniroute_playwright_browsers_path }}"
+  changed_when: false

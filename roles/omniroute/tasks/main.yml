@@ -1,0 +1,85 @@
+---
+- name: Validate target operating system
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: "This role currently supports Debian and Ubuntu operating systems only."
+
+- name: Load OS-specific variables
+  ansible.builtin.include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "{{ ansible_distribution | lower }}.yml"
+        - "{{ ansible_os_family | lower }}.yml"
+        - "main.yml"
+      paths:
+        - "vars"
+
+- name: Install system prerequisite packages
+  ansible.builtin.include_tasks: prerequisites.yml
+  tags:
+    - omniroute
+    - omniroute_prerequisites
+
+- name: Setup OmniRoute system user, group, and directories
+  ansible.builtin.include_tasks: user.yml
+  tags:
+    - omniroute
+    - omniroute_user
+
+- name: Manage Node.js runtime and pnpm package manager
+  ansible.builtin.include_tasks: nodejs.yml
+  when: omniroute_manage_nodejs | bool
+  tags:
+    - omniroute
+    - omniroute_nodejs
+
+- name: Manage cryptographic secrets and environment persistence
+  ansible.builtin.include_tasks: secrets.yml
+  tags:
+    - omniroute
+    - omniroute_secrets
+
+- name: Checkout OmniRoute source code and compile application
+  ansible.builtin.include_tasks: install.yml
+  tags:
+    - omniroute
+    - omniroute_install
+
+- name: Install Playwright and browser dependencies
+  ansible.builtin.include_tasks: playwright.yml
+  when: omniroute_enable_playwright | bool
+  tags:
+    - omniroute
+    - omniroute_playwright
+
+- name: Render OmniRoute configuration and payload rules
+  ansible.builtin.include_tasks: config.yml
+  tags:
+    - omniroute
+    - omniroute_config
+
+- name: Configure optional ecosystem sidecars
+  ansible.builtin.include_tasks: sidecars.yml
+  tags:
+    - omniroute
+    - omniroute_sidecars
+
+- name: Configure and manage systemd service unit
+  ansible.builtin.include_tasks: service.yml
+  tags:
+    - omniroute
+    - omniroute_service
+
+- name: Setup automated online SQLite backup service and timer
+  ansible.builtin.include_tasks: backup.yml
+  when: omniroute_backup_enabled | bool
+  tags:
+    - omniroute
+    - omniroute_backup
+
+- name: Validate OmniRoute health and operational endpoints
+  ansible.builtin.include_tasks: validate.yml
+  tags:
+    - omniroute
+    - omniroute_validate

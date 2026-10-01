@@ -1,0 +1,37 @@
+---
+- name: Ensure keyrings directory exists
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Download NodeSource official GPG key
+  ansible.builtin.get_url:
+    url: "{{ omniroute_nodesource_key_url }}"
+    dest: /etc/apt/keyrings/nodesource.gpg
+    mode: "0644"
+    force: false
+
+- name: Configure NodeSource APT repository
+  ansible.builtin.apt_repository:
+    repo: "{{ omniroute_nodesource_repo_url }}"
+    filename: nodesource
+    state: present
+    update_cache: true
+
+- name: Install Node.js 24 LTS and build tools
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - build-essential
+    state: present
+
+- name: Enable Corepack for pnpm management
+  ansible.builtin.command:
+    cmd: corepack enable
+  changed_when: false
+
+- name: Prepare and activate latest pnpm via Corepack
+  ansible.builtin.command:
+    cmd: "corepack prepare pnpm@{{ omniroute_pnpm_version }} --activate"
+  changed_when: false

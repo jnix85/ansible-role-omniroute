@@ -1,0 +1,4 @@
+---
+# Debian specific vars
+omniroute_nodesource_key_url: "https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+omniroute_nodesource_repo_url: "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_{{ omniroute_nodejs_version }}.x nodistro main"

@@ -1,0 +1,245 @@
+---
+# SPDX-License-Identifier: MIT
+# Defaults for omniroute role (OmniRoute AI Gateway)
+
+# =============================================================================
+# 1. SERVICE & INSTALLATION INFRASTRUCTURE
+# =============================================================================
+omniroute_version: "main"                               # Git tag (e.g. "v3.8.51") or branch
+omniroute_repo_url: "https://github.com/diegosouzapw/OmniRoute.git"
+omniroute_force_rebuild: false                          # Set true to force re-running pnpm build
+
+# Service User & Group
+omniroute_user: "omniroute"
+omniroute_group: "omniroute"
+omniroute_create_user: true
+omniroute_user_uid: ""
+omniroute_group_gid: ""
+omniroute_shell: "/bin/bash"
+
+# Base Directories
+omniroute_home: "/srv/omniroute"
+omniroute_app_dir: "{{ omniroute_home }}/app"
+omniroute_data_dir: "{{ omniroute_home }}/data"
+omniroute_config_dir: "{{ omniroute_home }}/config"
+omniroute_bin_dir: "{{ omniroute_home }}/bin"
+omniroute_backup_dir: "{{ omniroute_home }}/backups"
+omniroute_cache_dir: "{{ omniroute_home }}/.cache"
+omniroute_log_dir: "/var/log/omniroute"
+
+# Service Lifecycle & Systemd Cgroup Boundaries
+omniroute_service_name: "omniroute"
+omniroute_service_enabled: true
+omniroute_service_state: "started"
+omniroute_service_restart_on_change: true
+omniroute_systemd_memory_high: "2.5G"
+omniroute_systemd_memory_max: "3G"
+omniroute_manage_logrotate: true
+omniroute_logrotate_retention_days: 14
+
+# =============================================================================
+# 2. RUNTIME ENGINE (NodeSource Node.js 24 LTS & pnpm)
+# =============================================================================
+omniroute_manage_nodejs: true
+omniroute_nodejs_version: "24"
+omniroute_pnpm_version: "latest"
+omniroute_node_options: "--max-old-space-size=2048"
+omniroute_node_env: "production"
+
+# =============================================================================
+# 3. SECURITY & CRYPTOGRAPHIC SECRETS
+# =============================================================================
+# If left empty, the role automatically generates secure keys on initial run
+# and persists them in {{ omniroute_config_dir }}/.secrets.env (mode 0600)
+omniroute_jwt_secret: ""                                # Dashboard session signing (base64 48)
+omniroute_api_key_secret: ""                            # SQLite API keys encryption (hex 32)
+omniroute_storage_encryption_key: ""                    # Database encryption key (hex 32)
+omniroute_storage_encryption_key_version: "v1"
+omniroute_initial_password: ""                          # Initial admin login password
+omniroute_ws_bridge_secret: ""                          # Codex WS bridge secret (base64 32)
+omniroute_redis_password: ""                            # Local Redis authentication password
+
+# Salts & Identifiers
+omniroute_machine_id_salt: "endpoint-proxy-salt"
+omniroute_cli_salt: "omniroute-cli-auth-v1"
+
+# Access Policies & Flags
+omniroute_require_api_key: false                        # Require API key for /v1/* proxy endpoints
+omniroute_allow_api_key_reveal: false                   # Allow viewing full API keys in UI
+omniroute_auth_cookie_secure: false                     # Set true when running behind TLS reverse proxy
+omniroute_no_log_api_key_ids: []                        # API key IDs that skip request logging
+omniroute_default_rate_limit_per_day: 0                 # Fallback daily request budget (0 = unlimited)
+
+# =============================================================================
+# 4. NETWORK, PORTS & SPLIT-PORT ARCHITECTURE
+# =============================================================================
+omniroute_port_mode: "split"                            # "split" (Dashboard + API separate) or "single"
+omniroute_port: 20128                                   # Single-port canonical port
+omniroute_server_host: "0.0.0.0"
+omniroute_api_host: "0.0.0.0"
+omniroute_dashboard_port: 20128                        # Control plane / Dashboard UI port
+omniroute_api_port: 20129                              # Data plane / OpenAI Proxy API port
+
+# Real-time WebSocket Live Server
+omniroute_live_ws_enabled: true
+omniroute_live_ws_port: 20132
+omniroute_live_ws_host: "0.0.0.0"
+omniroute_live_ws_allowed_origins:
+  - "http://localhost:20128"
+  - "http://127.0.0.1:20128"
+  - "http://{{ ansible_facts['default_ipv4']['address'] | default('127.0.0.1') }}:20128"
+  - "http://{{ inventory_hostname }}:20128"
+omniroute_live_ws_allowed_hosts: []
+omniroute_live_ws_public_url: ""
+
+# URLs & Reverse Proxy Integration
+omniroute_base_path: ""                                 # Subpath (e.g. "/omniroute")
+omniroute_public_base_url: "http://localhost:20128"
+omniroute_public_protocol: "http"
+omniroute_trust_proxy: ""                               # "true", "loopback", "private"
+omniroute_dashboard_allow_embed: ""                     # "vscode" to allow VS Code iframe embed
+omniroute_cors_allowed_origins: []
+omniroute_cors_allow_all: false
+
+# Peer Chaining
+omniroute_instance_id: ""
+omniroute_peer_urls: ""
+omniroute_peer_max_hops: 4
+
+# =============================================================================
+# 5. SANITIZATION, INJECTION GUARDS & PII PROTECTION
+# =============================================================================
+omniroute_input_sanitizer_enabled: true
+omniroute_input_sanitizer_mode: "warn"                  # "warn" (log only) or "block"
+omniroute_input_sanitizer_block_threshold: "high"       # "high", "medium", "low"
+omniroute_pii_redaction_enabled: false
+omniroute_credential_redaction_enabled: false
+omniroute_pii_window_size: 200
+omniroute_pii_response_sanitization: false
+omniroute_pii_response_sanitization_mode: "redact"      # "redact", "warn", "block"
+omniroute_vscode_sanitize_context: true
+
+# Outbound URL & SSRF Guards
+omniroute_allow_private_provider_urls: true             # Required for local Ollama/LM Studio/vLLM
+omniroute_allow_local_provider_urls: true
+omniroute_outbound_ssrf_guard_enabled: true
+
+# =============================================================================
+# 6. MEMORY, BACKPRESSURE & ADMISSION GATE
+# =============================================================================
+omniroute_chat_large_body_bytes: 262144                 # 256 KB heavyweight body threshold
+omniroute_chat_hard_max_body_bytes: 52428800            # 50 MB hard cap
+omniroute_chat_max_heavy_in_flight: 1
+omniroute_chat_admission_heap_shed_ratio: 0.75
+omniroute_chat_admission_healthy_headroom: 1
+omniroute_chat_heavy_message_count: 200
+omniroute_chat_heavy_tool_count: 64
+omniroute_chat_heavy_estimated_tokens: 32000
+omniroute_chat_hard_max_messages: 0                     # 0 = unlimited
+omniroute_chat_admission_queue_ms: 2000
+omniroute_chat_admission_max_queued_bytes: 4194304      # 4 MB
+omniroute_chat_virtual_lanes: 0
+omniroute_max_body_size_bytes: 10485760                 # 10 MB upload guard
+omniroute_max_nonstreaming_response_bytes: 67108864     # 64 MB
+omniroute_combo_concurrency_per_model: 3
+omniroute_relay_ip_per_minute: 30
+
+# Background & Quota Schedulers
+omniroute_disable_sqlite_auto_backup: false
+omniroute_skip_db_healthcheck: false
+omniroute_credential_health_check_interval: 300000      # 5 minutes
+omniroute_credential_health_cache_ttl: 300000
+omniroute_disable_credential_health_check: false
+omniroute_connection_recovery_interval_ms: 60000        # Proactive provider recovery (60s)
+omniroute_disable_connection_recovery: false
+omniroute_model_sync_interval_hours: 24
+omniroute_provider_limits_sync_interval_minutes: 70
+omniroute_provider_limits_sync_spacing_ms: 1500
+omniroute_disable_background_services: false
+
+# =============================================================================
+# 7. OUTBOUND PROXY & EGRESS CONTROLS
+# =============================================================================
+omniroute_enable_socks5_proxy: true
+omniroute_http_proxy: ""
+omniroute_https_proxy: ""
+omniroute_all_proxy: ""
+omniroute_no_proxy: "localhost,127.0.0.1"
+omniroute_proxy_echo_url: ""
+omniroute_proxy_dispatcher_connections: 32
+omniroute_socks_handshake_timeout_ms: 10000
+omniroute_proxy_fail_open: false
+omniroute_enable_tls_fingerprint: false
+omniroute_tls_fingerprint_providers: []
+
+# =============================================================================
+# 8. TOOL POLICIES, MCP & PAYLOAD RULES
+# =============================================================================
+omniroute_tool_policy_mode: "disabled"                  # "allowlist", "denylist", "disabled"
+omniroute_payload_rules_path: "{{ omniroute_config_dir }}/payloadRules.json"
+omniroute_payload_rules_reload_ms: 5000
+omniroute_payload_rules: {}                             # Rendered to payloadRules.json
+
+# Model Policy Flags
+omniroute_prefer_claude_code_for_unprefixed_claude_models: false
+
+# MCP Server Settings
+omniroute_mcp_enforce_scopes: false
+omniroute_mcp_scopes:
+  - "admin"
+  - "combos"
+  - "health"
+omniroute_mcp_compress_descriptions: true
+omniroute_mcp_description_compression: "rtk"
+omniroute_mcp_fetch_timeout_ms: 10000
+omniroute_mcp_upstream_timeout_ms: 60000
+
+# =============================================================================
+# 9. OPTIONAL ECOSYSTEM SIDECARS (Toggleable)
+# =============================================================================
+# ── Redis Sidecar (Rate Limiter / Auth Cache) ──
+omniroute_redis_enabled: false
+omniroute_redis_mode: "local"                           # "local" (provisions redis-server) or "external"
+omniroute_redis_url: ""                                 # Auto-computed if empty in local mode
+omniroute_redis_key_prefix: "omniroute:"
+omniroute_redis_bind_host: "127.0.0.1"
+omniroute_redis_port: 6379
+
+# ── Qdrant Sidecar (Semantic Vector Memory) ──
+omniroute_qdrant_enabled: false
+omniroute_qdrant_version: "v1.13.2"
+omniroute_qdrant_port: 6333
+omniroute_qdrant_bind: "127.0.0.1"
+omniroute_qdrant_data_dir: "{{ omniroute_home }}/qdrant-data"
+
+# ── Bifrost Sidecar (Tier-1 Go Router) ──
+omniroute_bifrost_enabled: false
+omniroute_bifrost_version: "v0.1.0"
+omniroute_bifrost_port: 8080
+omniroute_bifrost_bind: "127.0.0.1"
+omniroute_bifrost_url: "http://127.0.0.1:8080"
+
+# ── Headroom Sidecar (Token Compression Proxy) ──
+omniroute_headroom_enabled: false
+omniroute_headroom_version: "v0.1.0"
+omniroute_headroom_port: 8787
+omniroute_headroom_bind: "127.0.0.1"
+omniroute_headroom_url: "http://127.0.0.1:8787"
+
+# ── Playwright / Chromium for Web-Cookie Providers ──
+omniroute_enable_playwright: false
+omniroute_playwright_browsers_path: "{{ omniroute_cache_dir }}/ms-playwright"
+
+# =============================================================================
+# 10. DATABASE MANAGEMENT & AUTOMATED BACKUPS
+# =============================================================================
+omniroute_sqlite_db_path: "{{ omniroute_data_dir }}/omniroute.db"
+omniroute_sqlite_busy_timeout: 5000
+omniroute_sqlite_journal_mode: "WAL"
+omniroute_sqlite_synchronous: "NORMAL"
+
+# Automated Scheduled Online Backups (systemd timer)
+omniroute_backup_enabled: true
+omniroute_backup_schedule: "*-*-* 02:00:00"             # Daily at 02:00:00
+omniroute_backup_retention_days: 7
+omniroute_backup_script_path: "{{ omniroute_bin_dir }}/omniroute-backup.sh"

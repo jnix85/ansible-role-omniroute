@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# OmniRoute SQLite Online Backup Script — Managed by Ansible
+# ==============================================================================
+set -euo pipefail
+
+DB_PATH="{{ omniroute_sqlite_db_path }}"
+BACKUP_DIR="{{ omniroute_backup_dir }}"
+RETENTION_DAYS="{{ omniroute_backup_retention_days }}"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+BACKUP_FILE="${BACKUP_DIR}/omniroute_backup_${TIMESTAMP}.db"
+LOG_TAG="omniroute-backup"
+
+logger -t "${LOG_TAG}" "Starting OmniRoute SQLite online backup..."
+
+if [[ ! -f "${DB_PATH}" ]]; then
+    logger -t "${LOG_TAG}" "WARNING: Database file ${DB_PATH} does not exist yet. Skipping backup."
+    exit 0
+fi
+
+# Perform atomic online vacuum / backup using SQLite native API
+sqlite3 "${DB_PATH}" ".backup '${BACKUP_FILE}'"
+
+# Compress backup
+gzip -f "${BACKUP_FILE}"
+logger -t "${LOG_TAG}" "Backup completed successfully: ${BACKUP_FILE}.gz"
+
+# Retention cleanup
+logger -t "${LOG_TAG}" "Pruning backups older than ${RETENTION_DAYS} days..."
+find "${BACKUP_DIR}" -type f -name "omniroute_backup_*.db.gz" -mtime "+${RETENTION_DAYS}" -delete
+
+logger -t "${LOG_TAG}" "OmniRoute backup process finished."

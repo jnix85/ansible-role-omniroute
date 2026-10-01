@@ -1,0 +1,33 @@
+---
+- name: Wait for OmniRoute dashboard port to become reachable
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if omniroute_server_host in ['0.0.0.0', ''] else omniroute_server_host }}"
+    port: "{{ omniroute_dashboard_port if omniroute_port_mode == 'split' else omniroute_port }}"
+    timeout: 60
+  when:
+    - omniroute_service_enabled | bool
+    - omniroute_service_state == "started"
+
+- name: Wait for OmniRoute API port to become reachable in split-port mode
+  ansible.builtin.wait_for:
+    host: "{{ '127.0.0.1' if omniroute_api_host in ['0.0.0.0', ''] else omniroute_api_host }}"
+    port: "{{ omniroute_api_port }}"
+    timeout: 60
+  when:
+    - omniroute_port_mode == 'split'
+    - omniroute_service_enabled | bool
+    - omniroute_service_state == "started"
+
+- name: Probe OmniRoute local health endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ omniroute_dashboard_port if omniroute_port_mode == 'split' else omniroute_port }}{{ omniroute_base_path }}/api/monitoring/health"
+    method: GET
+    status_code: [200, 401, 404]
+    timeout: 10
+  register: omniroute_health_probe
+  retries: 6
+  delay: 5
+  until: omniroute_health_probe.status in [200, 401, 404]
+  when:
+    - omniroute_service_enabled | bool
+    - omniroute_service_state == "started"

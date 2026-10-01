@@ -1,0 +1,68 @@
+---
+- name: Check if existing database exists before upgrade
+  ansible.builtin.stat:
+    path: "{{ omniroute_sqlite_db_path }}"
+  register: omniroute_db_stat
+
+- name: Take pre-upgrade database snapshot if upgrading existing deployment
+  ansible.builtin.shell:
+    cmd: >-
+      sqlite3 {{ omniroute_sqlite_db_path }}
+      ".backup '{{ omniroute_backup_dir }}/pre-upgrade_{{ ansible_date_time.iso8601_basic_short }}.db'" &&
+      gzip -f "{{ omniroute_backup_dir }}/pre-upgrade_{{ ansible_date_time.iso8601_basic_short }}.db"
+  become: true
+  become_user: "{{ omniroute_user }}"
+  when: omniroute_db_stat.stat.exists
+  changed_when: true
+
+- name: Clone or checkout OmniRoute repository
+  ansible.builtin.git:
+    repo: "{{ omniroute_repo_url }}"
+    dest: "{{ omniroute_app_dir }}"
+    version: "{{ omniroute_version }}"
+    force: false
+  become: true
+  become_user: "{{ omniroute_user }}"
+  register: omniroute_git_checkout
+  notify: restart omniroute
+
+- name: Install OmniRoute Node dependencies via pnpm
+  ansible.builtin.command:
+    cmd: pnpm install
+    chdir: "{{ omniroute_app_dir }}"
+  become: true
+  become_user: "{{ omniroute_user }}"
+  when: omniroute_git_checkout.changed or omniroute_force_rebuild | bool
+  environment:
+    NODE_ENV: "{{ omniroute_node_env }}"
+
+- name: Build OmniRoute production Next.js bundle
+  ansible.builtin.command:
+    cmd: pnpm build
+    chdir: "{{ omniroute_app_dir }}"
+  become: true
+  become_user: "{{ omniroute_user }}"
+  when: omniroute_git_checkout.changed or omniroute_force_rebuild | bool
+  environment:
+    NODE_ENV: "production"
+    NODE_OPTIONS: "{{ omniroute_node_options }}"
+  notify: restart omniroute
+
+- name: Ensure SQLite database directory exists
+  ansible.builtin.file:
+    path: "{{ omniroute_data_dir }}"
+    state: directory
+    owner: "{{ omniroute_user }}"
+    group: "{{ omniroute_group }}"
+    mode: "0700"
+
+- name: Apply SQLite WAL mode and concurrency tuning pragmas
+  ansible.builtin.command:
+    cmd: >-
+      sqlite3 {{ omniroute_sqlite_db_path }}
+      "PRAGMA journal_mode={{ omniroute_sqlite_journal_mode }};
+       PRAGMA busy_timeout={{ omniroute_sqlite_busy_timeout }};
+       PRAGMA synchronous={{ omniroute_sqlite_synchronous }};"
+  become: true
+  become_user: "{{ omniroute_user }}"
+  changed_when: false
